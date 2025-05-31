@@ -66,6 +66,36 @@ Please follow standard GitHub contribution guidelines.
 
 ---
 
+## Managing Secrets
+
+This project uses Streamlit's secrets management to securely handle sensitive information such as API keys, email credentials, and database connection details.
+
+To set up your secrets, create a file named `secrets.toml` inside a `.streamlit` directory at the root of the project:
+
+```
+.streamlit/secrets.toml
+```
+
+Example contents of `secrets.toml`:
+
+```toml
+GOOGLE_API_KEY = "your-google-api-key-here"
+SENDER_EMAIL = "your-email@example.com"
+SENDER_EMAIL_PASSWORD = "your-email-app-password"
+
+POSTGRES_HOST = "localhost"
+POSTGRES_PORT = 5432
+POSTGRES_DB = "gigsdb"
+POSTGRES_USER = "user"
+POSTGRES_PASSWORD = "password"
+```
+
+Replace the placeholder values with your actual credentials.
+
+Streamlit will automatically load these secrets and make them available via `st.secrets` in the app.
+
+---
+
 ## License
 
 This project is licensed under the MIT License.
