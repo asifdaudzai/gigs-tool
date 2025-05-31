@@ -9,7 +9,11 @@ import schedule
 import time
 
 # Set Google API Key as environment variable for langchain
-os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
+google_api_key = st.secrets.get("GOOGLE_API_KEY", None)
+if not google_api_key:
+    st.error("Google API key is not set in Streamlit secrets. Please add GOOGLE_API_KEY.")
+else:
+    os.environ["GOOGLE_API_KEY"] = google_api_key
 
 # --- Streamlit UI ---
 st.set_page_config(page_title="Gig Scraper App", layout="wide")
@@ -53,7 +57,11 @@ You are an expert analyst. Analyze the following gig listings and summarize key 
 
 Summary:
 """
-    response = llm.predict(prompt)
+    try:
+        response = llm.predict(prompt)
+    except Exception as e:
+        st.error(f"Error during AI analysis: {e}")
+        return "Analysis failed due to an error with the AI service. Please check your API key and configuration."
     return response
 
 def run_gig_scraping_and_analysis(query, platforms):
