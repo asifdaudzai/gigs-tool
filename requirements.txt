@@ -1,0 +1,7 @@
+streamlit
+crewai
+python-dotenv
+beautifulsoup4
+requests
+langchain-google-genai
+pysqlite3-binary
