@@ -102,6 +102,18 @@ This project is licensed under the MIT License.
 
 ---
 
+## Database Initialization
+
+To create the necessary database tables (e.g., the user table), run the following script after setting up your PostgreSQL credentials in the secrets file:
+
+```bash
+python init_db.py
+```
+
+This script connects to the PostgreSQL database and creates the `users` table if it does not already exist.
+
+---
+
 ## Contact
 
 For any questions or feedback, please reach out to Asif Ullah.
