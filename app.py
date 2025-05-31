@@ -39,14 +39,14 @@ recipient_email = st.text_input("Recipient Email for daily reports:")
 llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.7)
 
 def simulate_scraping(query, platforms):
-    # Simulate scraping with dummy data
+    # Simulate scraping with dummy data that includes the query
     results = []
     if "Fiverr" in platforms:
-        results.append(f"Found a Python gig on Fiverr: 'Build a web scraper' - Budget: $100-200. Skills: Python, BeautifulSoup.")
+        results.append(f"Found a gig on Fiverr related to '{query}': 'Build a web scraper' - Budget: $100-200. Skills: Python, BeautifulSoup.")
     if "Freelancer" in platforms:
-        results.append(f"Found a UI/UX design project on Freelancer: 'Design a mobile app UI' - Budget: $500-1000. Skills: Figma, Adobe XD.")
+        results.append(f"Found a gig on Freelancer related to '{query}': 'Design a mobile app UI' - Budget: $500-1000. Skills: Figma, Adobe XD.")
     if not results:
-        results.append("No gigs found for the given criteria.")
+        results.append(f"No gigs found for the query '{query}'.")
     return "\n".join(results)
 
 def analyze_gigs(raw_text):
