@@ -1,8 +1,7 @@
 import streamlit as st
-from crewai import Agent, Task, Crew, Process
+from langchain_google_genai import ChatGoogleGenerativeAI
 import os
 from config import SMTP_SERVER, SMTP_PORT, REPORT_TIME_HOUR, REPORT_TIME_MINUTE
-from langchain_google_genai import ChatGoogleGenerativeAI
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -10,7 +9,6 @@ import schedule
 import time
 
 # Set Google API Key as environment variable for langchain
-# For Streamlit Cloud, secrets are accessed via st.secrets
 os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
 
 # --- Streamlit UI ---
@@ -19,7 +17,7 @@ st.title("Freelance Gig Scraper")
 
 st.markdown("""
 This application helps you find relevant freelance gigs from various platforms.
-Configure your preferences below and let the AI agents do the work!
+Configure your preferences below and let the AI do the work!
 """)
 
 # User inputs for gig search
@@ -33,75 +31,38 @@ daily_report = st.checkbox("Send daily report to email?", value=True)
 report_time = st.time_input("Report time (24-hour format):", value="18:00")
 recipient_email = st.text_input("Recipient Email for daily reports:")
 
-# --- CrewAI Agent Setup ---
-llm = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.7) # Using gemini-pro as flash is not directly available in langchain_google_genai
+# Initialize LLM
+llm = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.7)
 
-# Define a placeholder tool for scraping. Real scraping tools would be more complex.
-# For now, this will simulate scraping.
-from crewai_tools import BaseTool
+def simulate_scraping(query, platforms):
+    # Simulate scraping with dummy data
+    results = []
+    if "Fiverr" in platforms:
+        results.append(f"Found a Python gig on Fiverr: 'Build a web scraper' - Budget: $100-200. Skills: Python, BeautifulSoup.")
+    if "Freelancer" in platforms:
+        results.append(f"Found a UI/UX design project on Freelancer: 'Design a mobile app UI' - Budget: $500-1000. Skills: Figma, Adobe XD.")
+    if not results:
+        results.append("No gigs found for the given criteria.")
+    return "\n".join(results)
 
-class GigScraperTool(BaseTool):
-    name: str = "Gig Scraper Tool"
-    description: str = "Scrapes freelance gig information from specified platforms."
+def analyze_gigs(raw_text):
+    prompt = f"""
+You are an expert analyst. Analyze the following gig listings and summarize key details like title, description, estimated pay, and required skills in a bulleted list:
 
-    def _run(self, query: str, platforms: list) -> str:
-        st.write(f"Simulating scraping for '{query}' on {', '.join(platforms)}...")
-        # In a real scenario, this would involve actual web scraping using requests/BeautifulSoup
-        # For demonstration, return dummy data
-        if "Fiverr" in platforms:
-            return f"Found a Python gig on Fiverr: 'Build a web scraper' - Budget: $100-200. Skills: Python, BeautifulSoup."
-        if "Freelancer" in platforms:
-            return f"Found a UI/UX design project on Freelancer: 'Design a mobile app UI' - Budget: $500-1000. Skills: Figma, Adobe XD."
-        return "No gigs found for the given criteria."
+{raw_text}
 
-gig_scraper_tool = GigScraperTool()
+Summary:
+"""
+    response = llm.predict(prompt)
+    return response
 
-def run_gig_scraping_crew(query, platforms):
-    gig_scraper_agent = Agent(
-        role='Gig Scraper',
-        goal=f'Scrape relevant freelance gigs for "{query}" from {", ".join(platforms)} using the Gig Scraper Tool.',
-        backstory='An expert in finding the best freelance opportunities online, capable of using specialized tools to extract gig information.',
-        verbose=True,
-        allow_delegation=False,
-        llm=llm,
-        tools=[gig_scraper_tool]
-    )
-
-    gig_analysis_agent = Agent(
-        role='Gig Analyzer',
-        goal='Analyze scraped gigs and identify key details like pay, skills, and deadlines, then summarize them into a concise report.',
-        backstory='A meticulous analyst who can extract crucial information from job postings and format it into a readable report.',
-        verbose=True,
-        allow_delegation=False,
-        llm=llm
-    )
-
-    scrape_task = Task(
-        description=f"Scrape gigs related to '{query}' from {', '.join(platforms)} using the 'Gig Scraper Tool'.",
-        agent=gig_scraper_agent,
-        expected_output="Raw text output from the Gig Scraper Tool containing gig details."
-    )
-
-    analyze_task = Task(
-        description="Analyze the raw gig data provided by the Gig Scraper and summarize key details for each gig, including title, description, estimated pay, and required skills. Format the output as a clear, bulleted list.",
-        agent=gig_analysis_agent,
-        context=[scrape_task],
-        expected_output="A structured report of gigs with their titles, descriptions, estimated pay, and required skills, formatted as a bulleted list."
-    )
-
-    project_crew = Crew(
-        agents=[gig_scraper_agent, gig_analysis_agent],
-        tasks=[scrape_task, analyze_task],
-        verbose=2,
-        process=Process.sequential
-    )
-
-    result = project_crew.kickoff()
-    return result
+def run_gig_scraping_and_analysis(query, platforms):
+    raw_gigs = simulate_scraping(query, platforms)
+    analysis = analyze_gigs(raw_gigs)
+    return analysis
 
 # --- Email Sending Function ---
 def send_email_report(recipient_email, report_content):
-    # Access secrets from Streamlit's st.secrets
     sender_email = st.secrets["SENDER_EMAIL"]
     sender_email_password = st.secrets["SENDER_EMAIL_PASSWORD"]
 
@@ -132,7 +93,7 @@ def send_email_report(recipient_email, report_content):
 def schedule_daily_report(query, platforms, recipient_email, report_hour, report_minute):
     def job():
         st.info(f"Running scheduled scraping for '{query}' on {', '.join(platforms)}...")
-        report = run_gig_scraping_crew(query, platforms)
+        report = run_gig_scraping_and_analysis(query, platforms)
         send_email_report(recipient_email, report)
 
     schedule.every().day.at(f"{report_hour:02d}:{report_minute:02d}").do(job)
@@ -149,29 +110,18 @@ if st.button("Start Scraping"):
         st.error("Please enter a recipient email for daily reports.")
     else:
         st.info("Starting the gig scraping process...")
-        
-        # Run immediate scraping
-        with st.spinner("Running CrewAI agents..."):
-            gig_report = run_gig_scraping_crew(search_query, platforms)
-        st.success("Scraping complete!")
+
+        with st.spinner("Running AI analysis..."):
+            gig_report = run_gig_scraping_and_analysis(search_query, platforms)
+        st.success("Scraping and analysis complete!")
         st.subheader("Scraping Results:")
         st.write(gig_report)
 
-        # Schedule daily report if checked
         if daily_report:
             schedule_daily_report(search_query, platforms, recipient_email, report_time.hour, report_time.minute)
         else:
             st.info("Daily report not scheduled.")
 
-# Note on Scheduling:
-# For persistent daily reports, a Streamlit app deployed on Streamlit Cloud
-# would typically require an external scheduling mechanism (e.g., a cron job
-# on a separate server, or a cloud function that triggers the scraping logic).
-# The `schedule` library used here will only run as long as the Streamlit app
-# is actively open and running in a browser session.
-# For this prototype, the scheduling function `schedule_daily_report` will
-# set up the job, but its execution depends on the Streamlit app's lifecycle.
-
 # --- Footer ---
 st.sidebar.header("About")
-st.sidebar.info("This app is a prototype for a freelance gig scraper using Streamlit and CrewAI.")
+st.sidebar.info("This app is a prototype for a freelance gig scraper using Streamlit and Google Generative AI.")
