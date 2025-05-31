@@ -36,7 +36,7 @@ report_time = st.time_input("Report time (24-hour format):", value="18:00")
 recipient_email = st.text_input("Recipient Email for daily reports:")
 
 # Initialize LLM
-llm = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.7)
+llm = ChatGoogleGenerativeAI(model="models/chat-bison-001", temperature=0.7)
 
 def simulate_scraping(query, platforms):
     # Simulate scraping with dummy data
